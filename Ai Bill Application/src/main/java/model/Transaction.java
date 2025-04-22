@@ -8,9 +8,6 @@ public class Transaction {
     private String counterparty;
     private String commodity;
     private String inOut;
-
-
-
     private double paymentAmount;
     private String paymentMethod;
     private String currentStatus;

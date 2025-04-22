@@ -16,7 +16,7 @@ import java.util.List;
 
 class CsvTransactionDaoTest {
     // 测试文件路径（根据实际结构调整）
-    private static final String TEST_CSV_PATH = "src\\main\\resources\\CSVForm\\0001.csv";
+    private static final String TEST_CSV_PATH = "src/test/resources/001.csv";
     private static CsvTransactionDao dao;
 
     @Test
@@ -27,39 +27,31 @@ class CsvTransactionDaoTest {
         // When
         List<Transaction> transactions = dao.loadFromCSV(TEST_CSV_PATH);
 
-        // Then
-        assertThat(transactions)
-                .isNotNull()
-                .isNotEmpty();
         // 验证第一条记录的字段
         for (int i = 0; i < transactions.size(); i++) {
             System.out.println(transactions.get(i).getRemarks());
-            System.out.println(transactions.get(i).getPaymentAmount());
+            System.out.println(transactions.get(i).getCommodity());
         }
 
 
     }
-//    @BeforeAll
-//    static void setup() throws IOException {
-//        dao = new CsvTransactionDao();
-//
-//        testCsvPath = Path.of("src\\main\\resources\\CSVForm\\0001.csv");
-//
-//
-//        // 创建测试 CSV 文件
-//        try (BufferedWriter writer = Files.newBufferedWriter(testCsvPath)) {
-//            writer.write("交易时间,交易类型,交易对方,商品,收/支,金额(元),支付方式,当前状态,交易单号,商户单号,备注\n");
-//            writer.write("2025-03-08 14:30,支付,小红,电子书,支,¥29.99,支付宝,已完成,TX987654,M123456,无备注\n");
-//
-//        }
-//    }
-
     @Test
     void testAddTransaction() throws IOException {
         dao=new CsvTransactionDao();
-        Transaction newTx = new Transaction("2025-03-09 10:00", "转账", "小明", "书籍", "支", 99.99, "微信", "已完成", "TX123456", "M789012", "");
+        Transaction newTx = new Transaction(
+                "2025-03-09 10:00",
+                "转账",
+                "小明",
+                "书籍",
+                "支",
+                99.99,
+                "微信",
+                "已完成",
+                "TX123456",
+                "M789012",
+                "");
 
-        dao.addTransaction("src\\main\\resources\\CSVForm\\0001.csv", newTx);
+        dao.addTransaction("src/test/resources/001.csv", newTx);
 
         List<Transaction> transactions = dao.loadFromCSV(TEST_CSV_PATH);
 

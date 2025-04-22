@@ -9,16 +9,16 @@ import org.apache.commons.io.input.BOMInputStream;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class CsvTransactionDao implements TransactionDao {
-
-//HEAD 交易时间	交易类型	交易对方	商品	收/支 支付方式 //金额(元)		//当前状态	//交易单号	//商户单号	//备注
+    //避免每次都调用loadFromCSV() 方法
+    private List<Transaction> transactions;
+    private boolean isLoad= false;
+//HEAD 交易时间	交易类型	交易对方	商品	收/支	金额(元)	支付方式	当前状态	交易单号	商户单号	备注
     //
     @Override
     public List<Transaction> loadFromCSV(String filePath) throws IOException {
@@ -42,6 +42,8 @@ public class CsvTransactionDao implements TransactionDao {
                     transactions.add(transaction);
                 }
                 reader.close();
+                this.transactions = transactions;
+                this.isLoad=true;
                 return transactions;
             }
         }
@@ -56,8 +58,7 @@ public class CsvTransactionDao implements TransactionDao {
                 record.get("交易对方"),
                 record.get("商品"),
                 record.get("收/支"),
-                convertStringToDouble(record.get("金额(元)")),
-//                Double.parseDouble(record.get("金额(元)").substring(1)), // 注意数字转换
+                Double.parseDouble(record.get("金额(元)").substring(1)), // 注意数字转换
                 record.get("支付方式"),
                 record.get("当前状态"),
                 record.get("交易单号"), // 注意字段名拼写问题
@@ -68,7 +69,8 @@ public class CsvTransactionDao implements TransactionDao {
 
     // 根据交易单号删除交易记录
     public boolean deleteTransaction(String filePath, String orderNumber) throws IOException {
-        List<Transaction> transactions = loadFromCSV(filePath);
+        if(isLoad==false){ loadFromCSV(filePath);}
+
         List<Transaction> updatedTransactions = transactions.stream()
                 .filter(t -> !t.getOrderNumber().trim().equals(orderNumber))
                 .collect(Collectors.toList());
@@ -105,22 +107,17 @@ public class CsvTransactionDao implements TransactionDao {
             csvPrinter.flush();
         }
     }
-    public double convertStringToDouble(String s) {
-        // 步骤1：移除所有非数字字符（保留小数点和负号）
-        String cleanStr = s.replaceAll("[^\\d.-]", "");
-
-        try {
-            return Double.parseDouble(cleanStr);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("无效的数字格式: " + s);
-        }
-    }
 
     // 统一写回 CSV
     public void writeTransactionsToCSV(String filePath, List<Transaction> transactions) throws IOException {
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(filePath));
+        // 1. 创建临时文件（确保与原文件同目录）
+        File targetFile = new File(filePath);
+        File tempFile = File.createTempFile("transaction_temp", ".csv", targetFile.getParentFile());
+
+        // 2. 写入数据到临时文件（使用 try-with-resources 确保资源释放）
+        try (BufferedWriter writer = Files.newBufferedWriter(tempFile.toPath());
              CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(
-                     "交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "支付方式", "当前状态", "交易单号", "商户单号", "备注")))  {
+                     "交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "支付方式", "当前状态", "交易单号", "商户单号", "备注"))) {
 
             for (Transaction t : transactions) {
                 csvPrinter.printRecord(
@@ -137,8 +134,44 @@ public class CsvTransactionDao implements TransactionDao {
                         t.getRemarks()
                 );
             }
+            csvPrinter.flush(); // 强制刷盘
+        } catch (IOException e) {
+            tempFile.delete(); // 失败时删除临时文件
+            throw e;
+        }
+
+        // 3. 原子性替换原文件
+        Path source = tempFile.toPath();
+        Path target = Paths.get(filePath);
+        try {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            System.err.println("移动失败原因: " + e.getMessage());
         }
     }
+
+//    public void writeTransactionsToCSV(String filePath, List<Transaction> transactions) throws IOException {
+//        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(filePath));
+//             CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(
+//                     "交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "支付方式", "当前状态", "交易单号", "商户单号", "备注")))  {
+//
+//            for (Transaction t : transactions) {
+//                csvPrinter.printRecord(
+//                        t.getTransactionTime(),
+//                        t.getTransactionType(),
+//                        t.getCounterparty(),
+//                        t.getCommodity(),
+//                        t.getInOut(),
+//                        "¥" + t.getPaymentAmount(),
+//                        t.getPaymentMethod(),
+//                        t.getCurrentStatus(),
+//                        t.getOrderNumber(),
+//                        t.getMerchantNumber(),
+//                        t.getRemarks()
+//                );
+//            }
+//        }
+//    }
 
     // 获取 CSV 格式（包含表头）
     private CSVFormat getCsvFormatWithHeader(String filePath) throws IOException {
@@ -160,7 +193,7 @@ public class CsvTransactionDao implements TransactionDao {
     }
 
     public boolean changeInformation(String orderNumber, String head, String value,String path) throws IOException{
-        List<Transaction> transactions=loadFromCSV(path);
+        if(isLoad==false){ loadFromCSV(path);}
         for (int i = 0; i < transactions.size(); i++) {
             if(transactions.get(i).getOrderNumber().trim().equals(orderNumber)){
                 Transaction newTransaction=transactions.get(i);
@@ -210,8 +243,6 @@ public class CsvTransactionDao implements TransactionDao {
                     System.out.println("success to delete");
                 }
                 else System.err.println("failed to delete");
-
-
             }
         }
         return true;

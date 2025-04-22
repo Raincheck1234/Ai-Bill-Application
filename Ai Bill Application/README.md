@@ -1,7 +1,7 @@
 # Structure and Function
-Swing GUI (Controller) ¡ú Service ¡ú DAO ¡ú data£¨CSV/JSON£©
+Swing GUI (Controller) <- Service <- DAO <-data(CSV/JSON)
 
-## Service£º(Business logic)
+## Service (Business logic)
 Responsibilities:
 Transaction CRUD operations, calling the DAO layer to read and write local files,
 User-defined classification logic (e.g. modifying transaction categories)
@@ -15,7 +15,7 @@ on historical data, and detect cost-cutting recommendations for seasonal spendin
 Responsibilities: Save transaction data in CSV or JSON format and provide interfaces for adding,
 deleting, and modifying in-memory data
 
-## Controller£¨Swing GUI£©
+## Controller (Swing GUIÂ£)
 
 Responsibilities: Manage user interface components (buttons, tables, text boxes) to listen for 
 events (clicks, inputs) and call service layer methods to update the interface data display

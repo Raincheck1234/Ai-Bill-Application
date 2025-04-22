@@ -9,12 +9,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.IOException;
 import java.util.List;
 
+
 class TransactionServiceTest {
     private TransactionService transactionService;
     private static final String TEST_CSV_PATH = "src/main/resources/CSVForm/0001.csv";
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
         // 初始化 DAO 和 Service
         CsvTransactionDao csvTransactionDao = new CsvTransactionDao();
         transactionService = new TransactionServiceImpl(csvTransactionDao);
@@ -38,10 +39,10 @@ class TransactionServiceTest {
     }
 
     @Test
-    void testChangeTransaction() throws IOException {
+    void testChangeTransaction() throws Exception {
         // 准备测试数据
         Transaction originalTransaction = new Transaction(
-                "2023-08-20 15:30:00", "转账", "李四", "虚拟商品", "支出", 500.0,
+                "2023-08-20 15:30:00", "转账", "王五", "虚拟商品", "支出", 500.0,
                 "银行卡", "已完成", "T123456789", "M987654321", "测试"
         );
         transactionService.addTransaction(originalTransaction);
@@ -62,7 +63,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void testDeleteTransaction() throws IOException {
+    void testDeleteTransaction() throws Exception {
         // 准备测试数据
         Transaction transaction = new Transaction(
                 "2023-08-20 15:30:00", "转账", "李四", "虚拟商品", "支出", 500.0,
@@ -103,5 +104,7 @@ class TransactionServiceTest {
         // 验证搜索结果
         assertEquals(1, result.size());
         assertEquals("T987654321", result.get(0).getOrderNumber());
+
+        System.out.println(result);
     }
 }
